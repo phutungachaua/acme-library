@@ -15,8 +15,6 @@ coverage/
 # Biến môi trường và thông tin bí mật
 .env
 .env.*
-!.env.example
-!**/.env.example
 *.pem
 *.key
 
