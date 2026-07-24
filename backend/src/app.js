@@ -1,0 +1,26 @@
+import crypto from "node:crypto";
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
+import cookieParser from "cookie-parser";
+import pinoHttp from "pino-http";
+import { rateLimit } from "express-rate-limit";
+import { env } from "./config/env.js";
+import { authRouter } from "./routes/auth.routes.js";
+import { bookRouter } from "./routes/book.routes.js";
+import { userRouter } from "./routes/user.routes.js";
+import { adminRouter } from "./routes/admin.routes.js";
+import { publicRouter } from "./routes/public.routes.js";
+import { errorHandler, notFound } from "./middlewares/error.js";
+
+export const app=express();
+app.set("trust proxy",1);app.disable("x-powered-by");
+app.use(pinoHttp({genReqId:(req)=>req.headers["x-request-id"]||crypto.randomUUID(),redact:["req.headers.authorization","req.headers.cookie","req.body.password","req.body.currentPassword","req.body.newPassword"]}));
+app.use(helmet({crossOriginResourcePolicy:{policy:"cross-origin"}}));
+app.use(cors({origin:(origin,cb)=>!origin||origin===env.CLIENT_URL?cb(null,true):cb(new Error("CORS blocked")),credentials:true,methods:["GET","POST","PATCH","DELETE"]}));
+app.use(compression());app.use(cookieParser(env.COOKIE_SECRET));app.use(express.json({limit:"1mb"}));app.use(express.urlencoded({extended:false,limit:"1mb"}));
+const authLimiter=rateLimit({windowMs:15*60*1000,limit:20,standardHeaders:"draft-7",legacyHeaders:false,message:{success:false,message:"Quá nhiều yêu cầu, vui lòng thử lại sau",errors:[]}});
+app.get("/health",(_req,res)=>res.json({success:true,status:"ok"}));
+app.use("/api/auth",authLimiter,authRouter);app.use("/api/books",bookRouter);app.use("/api",publicRouter);app.use("/api",userRouter);app.use("/api/admin",adminRouter);
+app.use(notFound);app.use(errorHandler);

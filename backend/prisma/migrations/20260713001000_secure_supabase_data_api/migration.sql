@@ -1,0 +1,31 @@
+-- Acme Library accesses PostgreSQL only through the Express/Prisma backend.
+-- Keep the Supabase Data API roles away from all application tables.
+REVOKE ALL ON SCHEMA public FROM anon, authenticated, service_role;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated, service_role;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated, service_role;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM anon, authenticated, service_role, PUBLIC;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES FROM anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE USAGE, SELECT, UPDATE ON SEQUENCES FROM anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  REVOKE EXECUTE ON FUNCTIONS FROM anon, authenticated, service_role, PUBLIC;
+
+ALTER TABLE public."User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Book" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Author" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."BookAuthor" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Category" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Publisher" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Location" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."BookCopy" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."BorrowRecord" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Fine" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Review" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."ViewHistory" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Feedback" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."Notification" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."SystemSetting" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."AdminAuditLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public."RefreshToken" ENABLE ROW LEVEL SECURITY;

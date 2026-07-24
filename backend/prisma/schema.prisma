@@ -1,0 +1,380 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+}
+
+enum BookStatus {
+  VISIBLE
+  HIDDEN
+  DISCONTINUED
+}
+
+enum CopyStatus {
+  AVAILABLE
+  BORROWED
+  RESERVED
+  DAMAGED
+  LOST
+  INACTIVE
+}
+
+enum BorrowStatus {
+  PENDING
+  APPROVED
+  BORROWING
+  RETURNED
+  OVERDUE
+  CANCELLED
+  LOST
+}
+
+enum FineStatus {
+  NONE
+  UNPAID
+  PAID
+  WAIVED
+  REDUCED
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  HIDDEN
+  REJECTED
+}
+
+enum FeedbackStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CLOSED
+}
+
+enum NotificationType {
+  DUE_SOON
+  DUE_TODAY
+  OVERDUE
+  FINE
+  FEEDBACK_REPLY
+  SYSTEM
+  BORROW
+}
+
+enum ReturnCondition {
+  NORMAL
+  MINOR_TEAR
+  DAMAGED
+  LOST
+}
+
+model User {
+  id                 String          @id @default(cuid())
+  lastMiddleName     String
+  firstName          String
+  email              String          @unique
+  phone              String?         @unique
+  passwordHash       String
+  avatarUrl          String?
+  avatarPublicId     String?
+  role               UserRole        @default(USER)
+  status             UserStatus      @default(ACTIVE)
+  zaloPhone          String?
+  zaloId             String?
+  theme              String          @default("system")
+  emailNotifications Boolean         @default(true)
+  deletedAt          DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  borrows            BorrowRecord[]
+  reviews            Review[]
+  views              ViewHistory[]
+  feedback           Feedback[]
+  notifications      Notification[]
+  sessions           RefreshToken[]
+  auditLogs          AdminAuditLog[] @relation("AuditActor")
+
+  @@index([status, role])
+  @@index([createdAt])
+}
+
+model Book {
+  id                  String         @id @default(cuid())
+  title               String
+  slug                String         @unique
+  bookCode            String         @unique
+  isbn                String?        @unique
+  language            String         @default("vi")
+  publishedYear       Int?
+  coverUrl            String?
+  coverPublicId       String?
+  shortDescription    String
+  editorialReview     String?
+  highlights          String?
+  recommendedFor      String?
+  excerpt             String?
+  showEditorialReview Boolean        @default(true)
+  status              BookStatus     @default(VISIBLE)
+  featured            Boolean        @default(false)
+  finePerDay          Decimal?       @db.Decimal(12, 2)
+  borrowDays          Int?
+  borrowCount         Int            @default(0)
+  deletedAt           DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  categoryId          String
+  publisherId         String?
+  category            Category       @relation(fields: [categoryId], references: [id])
+  publisher           Publisher?     @relation(fields: [publisherId], references: [id])
+  authors             BookAuthor[]
+  copies              BookCopy[]
+  borrows             BorrowRecord[]
+  reviews             Review[]
+  views               ViewHistory[]
+
+  @@index([title])
+  @@index([categoryId, status])
+  @@index([publisherId])
+  @@index([featured, createdAt])
+  @@index([borrowCount])
+}
+
+model Author {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  bio       String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  books     BookAuthor[]
+}
+
+model BookAuthor {
+  bookId   String
+  authorId String
+  book     Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  author   Author @relation(fields: [authorId], references: [id])
+
+  @@id([bookId, authorId])
+  @@index([authorId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  books       Book[]
+}
+
+model Publisher {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  books     Book[]
+}
+
+model Location {
+  id        String     @id @default(cuid())
+  area      String
+  cabinet   String
+  shelf     String
+  slot      String?
+  note      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  copies    BookCopy[]
+
+  @@unique([area, cabinet, shelf, slot])
+}
+
+model BookCopy {
+  id            String         @id @default(cuid())
+  copyCode      String         @unique
+  status        CopyStatus     @default(AVAILABLE)
+  conditionNote String?
+  deletedAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  bookId        String
+  locationId    String
+  book          Book           @relation(fields: [bookId], references: [id])
+  location      Location       @relation(fields: [locationId], references: [id])
+  borrows       BorrowRecord[]
+
+  @@index([bookId, status])
+  @@index([locationId])
+}
+
+model BorrowRecord {
+  id              String           @id @default(cuid())
+  borrowDate      DateTime?
+  dueDate         DateTime?
+  returnDate      DateTime?
+  status          BorrowStatus     @default(PENDING)
+  overdueDays     Int              @default(0)
+  finePerDay      Decimal          @default(0) @db.Decimal(12, 2)
+  fineAmount      Decimal          @default(0) @db.Decimal(12, 2)
+  fineStatus      FineStatus       @default(NONE)
+  returnCondition ReturnCondition?
+  adminNote       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  userId          String
+  bookId          String
+  bookCopyId      String?
+  user            User             @relation(fields: [userId], references: [id])
+  book            Book             @relation(fields: [bookId], references: [id])
+  bookCopy        BookCopy?        @relation(fields: [bookCopyId], references: [id])
+  fine            Fine?
+
+  @@index([userId, status])
+  @@index([status, dueDate])
+  @@index([bookId, status])
+  @@index([bookCopyId])
+}
+
+model Fine {
+  id             String       @id @default(cuid())
+  originalAmount Decimal      @db.Decimal(12, 2)
+  finalAmount    Decimal      @db.Decimal(12, 2)
+  status         FineStatus   @default(UNPAID)
+  note           String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  borrowRecordId String       @unique
+  borrowRecord   BorrowRecord @relation(fields: [borrowRecordId], references: [id])
+
+  @@index([status, createdAt])
+}
+
+model Review {
+  id          String       @id @default(cuid())
+  rating      Int
+  comment     String?
+  status      ReviewStatus @default(PENDING)
+  moderatedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  userId      String
+  bookId      String
+  user        User         @relation(fields: [userId], references: [id])
+  book        Book         @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@index([bookId, status])
+  @@index([status, createdAt])
+}
+
+model ViewHistory {
+  id           String   @id @default(cuid())
+  lastViewedAt DateTime @default(now())
+  viewCount    Int      @default(1)
+  userId       String
+  bookId       String
+  user         User     @relation(fields: [userId], references: [id])
+  book         Book     @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@index([userId, lastViewedAt])
+  @@index([bookId])
+}
+
+model Feedback {
+  id                 String         @id @default(cuid())
+  subject            String
+  category           String
+  message            String
+  attachmentUrl      String?
+  attachmentPublicId String?
+  status             FeedbackStatus @default(NEW)
+  adminReply         String?
+  repliedAt          DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  userId             String
+  user               User           @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  readAt    DateTime?
+  dedupeKey String?          @unique
+  createdAt DateTime         @default(now())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt, createdAt])
+}
+
+model SystemSetting {
+  id                    Int      @id @default(1)
+  libraryName           String   @default("Acme Library")
+  logoUrl               String?
+  defaultBorrowDays     Int      @default(14)
+  defaultFinePerDay     Decimal  @default(5000) @db.Decimal(12, 2)
+  maxConcurrentBorrows  Int      @default(3)
+  allowRenewal          Boolean  @default(true)
+  maxRenewals           Int      @default(1)
+  requireBorrowApproval Boolean  @default(true)
+  requireReviewApproval Boolean  @default(true)
+  lockWithUnpaidFine    Boolean  @default(false)
+  defaultTheme          String   @default("system")
+  allowThemeChange      Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  actorId    String
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}

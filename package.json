@@ -1,0 +1,12 @@
+{
+  "name": "acme-library",
+  "private": true,
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "concurrently -n WEB,API -c cyan,green \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "build": "npm run build -w frontend && npm run prisma:generate -w backend",
+    "lint": "npm run lint -w frontend && npm run lint -w backend",
+    "test": "npm run test -w backend"
+  },
+  "devDependencies": { "concurrently": "^9.2.1" }
+}

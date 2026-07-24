@@ -1,0 +1,51 @@
+# Thư viện cài đặt
+node_modules/
+.pnpm-store/
+
+# Bản build và bộ nhớ đệm
+.next/
+dist/
+build/
+out/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Biến môi trường và thông tin bí mật
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+
+# Nhật ký chạy ứng dụng
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+
+# Cơ sở dữ liệu cục bộ
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Công cụ triển khai
+.vercel/
+
+# IDE và hệ điều hành
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# File tạm
+*.tmp
+*.temp
+*.swp
+*~
